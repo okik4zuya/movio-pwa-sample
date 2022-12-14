@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { id } from "date-fns/locale"
+import axios from 'axios';
+import {
+  format,
+  addMonths,
+  subMonths,
+  addDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isSameMonth,
+  getMonth,
+  getDay,
+} from 'date-fns';
+import { id } from "date-fns/locale";
+import { toHijri } from 'hijri-date/lib/safe';
 
 function App() {
   return (
@@ -13,19 +27,19 @@ function App() {
           <div className='flex-1'><Post /></div>
           <div className='h-4'></div>
           <div className='flex'>
-            <Video src="https://www.youtube.com/embed/3e6_lp9tY74"/>
+            <Video src="https://www.youtube.com/embed/3e6_lp9tY74" />
             <div className='w-4'></div>
             <Video src="https://www.youtube.com/embed/WRVsOCh907o" />
           </div>
         </div>
-        <div className='main flex-1 bg-white rounded-lg flex justify-center items-center' style={{ height: "600px" }}>
-          Calendar
+        <div className='main flex-1'>
+          <Calendar />
         </div>
       </div>
-      
+
       <div className='flex flex-col h-screen sm:hidden'>
-        <div className='h-48 m-4'><Post/></div> 
-        <div className='rounded-lg bg-white h-96 flex justify-center items-center'>Calendar</div>
+        <div className='h-48 m-4'><Post /></div>
+        <Calendar mobile />
 
       </div>
 
@@ -36,6 +50,9 @@ function App() {
 export default App;
 
 const Header = () => {
+  const [selectedMenu, setSelectedMenu] = useState("Account Setting");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <div className='flex bg-white h-16 items-center' style={{ color: "#00a39d" }}>
       <div className='ml-4 sm:ml-12 h-3/4 flex items-center flex-1'>
@@ -51,12 +68,184 @@ const Header = () => {
           <option className='text-gray-600'>Minggu</option>
         </select>
       </div>
-      <div className='mr-4 sm:mr-12 ml-4 sm:ml-16 flex items-center' style={{ height: "24px" }}>
-        <Icon name="user" />
+      <div className='mr-4 sm:mr-12 ml-4 sm:ml-12 relative' style={{ height: "24px" }}>
+        <div className='h-full flex items-center cursor-pointer' onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <Icon name="user" />
+        </div>
+        {isMenuOpen &&
+          <div className='rounded-md mt-2 absolute right-0 flex flex-col items-center' style={{ backgroundColor: "#00a39d", zIndex: "2", top: "calc(100% + 4px)", width: "240px" }}>
+            <div className='w-10 h-10 bg-white rounded-full mt-4 flex items-center justify-center'>
+              <div className='h-2/3'>
+                <Icon name="user" />
+              </div>
+            </div>
+            <div className='text-white text-md font-semibold mt-1 mb-1'>Ryan Khoirul Makkih</div>
+
+            <div className='text-white mb-2 w-full'>
+              {
+                [
+                  "Account Setting",
+                  "Sync Google Calendar",
+                  "Download PDF",
+                  "Share"
+                ].map(item => (
+                  <div key={item}
+                    className="text-center text-xs py-1 cursor-pointer font-semibold"
+                    style={{
+                      backgroundColor: selectedMenu === item ? "#faa73e" : "transparent"
+                    }}
+                    onClick={() => { setSelectedMenu(item) }}
+                  >
+                    {item}
+                  </div>
+                ))
+              }
+
+            </div>
+          </div>
+        }
       </div>
     </div>
   )
 }
+
+const Calendar = (props) => {
+  const { mobile } = props;
+  const [currentDate, setCurrentDate] = useState(new Date("2023-01-01"));
+  const [yearly, setYearly] = useState([]);
+  const [monthIndex, setMonthIndex] = useState(getMonth(currentDate) + 1)
+  const month = yearly.length !== 0 ? yearly.monthly[monthIndex] : null
+
+  const nextMonth = () => {
+    const next = addMonths(currentDate, 1)
+    setCurrentDate(next)
+    setMonthIndex(getMonth(next) + 1);
+  }
+  const prevMonth = () => {
+    const prev = subMonths(currentDate, 1)
+    if (monthIndex === 0) { return; }
+    else {
+      setCurrentDate(prev);
+      setMonthIndex(getMonth(prev) + 1);
+    }
+  }
+
+
+  const fetchYear = () => {
+    const url = `${process.env.PUBLIC_URL}/kalender2023.json`
+    axios.get(url).then(response => setYearly(response.data.data))
+  }
+  useEffect(() => {
+    fetchYear();
+  }, [])
+
+  yearly.length !== 0 && console.log(month)
+  return (
+    <div className='bg-white rounded-lg py-8 relative overflow-hidden'
+      style={{
+        height: "auto"
+      }}>
+
+      <div className='sm:flex hidden items-center px-8'>
+        <div className='flex' style={{ color: "rgba(234,170,67,1)", height: "16px" }}>
+          <div className='mr-1 cursor-pointer' onClick={prevMonth}> <Icon name="cl" /> </div>
+          <div classname="cursor-pointer" onClick={nextMonth}> <Icon name="cr" /> </div>
+        </div>
+        <div className='font-medium ml-4 text-2xl' style={{ color: "#00a39d" }}>{format(currentDate, "MMMM YYY")} / 1444 H</div>
+      </div>
+      <div className='flex sm:hidden w-full items-center px-8' style={{ color: "rgba(234,170,67,1)", height: "24px" }}>
+        <div className='mr-1 cursor-pointer h-4 flex items-center' onClick={prevMonth}> <Icon name="cl" width="24px" height="24px" /> </div>
+        <div className='flex-1 text-center font-medium ml-4 text-xl' style={{ color: "#00a39d" }}>{format(currentDate, "MMMM YYY")} / 1444 H</div>
+        <div classname="cursor-pointer h-4 flex items-center" onClick={nextMonth}> <Icon name="cr" width="24px" height="24px" /> </div>
+      </div>
+      <div className='mt-12 sm:flex hidden px-8'>
+        {["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jum'at", "Sabtu"].map(item => (
+          <div className='flex-1 font-semibold pl-5'
+            style={{
+              color: item === "Minggu" ? "red" : "#444444"
+
+            }}
+          >{item}</div>
+        ))}
+      </div>
+      <div className='flex mt-8 w-full px-8'
+        style={{
+          flexWrap: mobile ? "nowrap" : "wrap",
+          overflow: mobile ? "auto" : "hidden",
+
+        }}>
+        {month && month.daily.map(item => (
+          <div className='h-16 mb-6'
+            style={{
+              width: mobile ? "300px" : 100 / 7 + "%",
+              //width: "200px",
+              color: getDay(new Date(item.date.M)) === 0 ? "red" : "#575757",
+              borderBottom: mobile ? "none" : "1px solid #949494"
+
+            }}>
+            {mobile &&
+              <div className='font-semibold w-20'>{format(new Date(item.date.M), "eeee", { locale: id })}</div>
+            }
+            <div className='flex items-end mt-3 sm:mt-0'>
+              <div className='flex-1 flex font-semibold items-end justify-center'
+                style={{
+                  fontSize: mobile ? "18px" : "22px"
+                }}
+              >{format(new Date(item.date.M), "d")}</div>
+              <div className='flex-1 flex items-end font-semibold justify-start'
+                style={{
+                  fontSize: mobile ? "12px" : "16px"
+                }}
+              >{format(new Date(item.date.H), "d")}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className='block sm:hidden'>
+        <div className='px-8'>
+          <div className='flex justify-end pb-4' style={{ borderBottom: "1px solid #e7e7e7" }}>
+            <div className="rounded-full text-center text-white py-1 px-4 font-semibold" style={{ background: "#eaaa43" }}>All Day - Puasa Ayyamul Bidh</div>
+          </div>
+          <div className='mt-8'>
+            <div className='flex items-center'>
+              <div className="text-lg font-bold" style={{ color: "#575757" }}>07.00</div>
+              <div className='flex-1 ml-4' style={{ borderTop: "1px solid #e7e7e7", height: "1px" }}></div>
+            </div>
+            <div className='flex justify-end'>
+              <div className="rounded-full text-center text-white py-1 px-4 font-semibold flex items-center" style={{ background: "#225bea" }}>
+                <div className='mr-8'>07.30 - 07.55</div>
+                <div>Meeting</div>
+
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className='flex items-center'>
+              <div className="text-lg font-bold" style={{ color: "#575757" }}>07.00</div>
+              <div className='flex-1 ml-4' style={{ borderTop: "1px solid #e7e7e7", height: "1px" }}></div>
+            </div>
+            <div className='flex justify-end'>
+            </div>
+          </div>
+        </div>
+        <div className='h-8 mt-16 relative w-full' style={{ backgroundColor: "#00a39d" }}>
+          <div className='flex items-center justify-center p-2 text-2xl text-white rounded-full absolute mb-12 h-12 w-12 cursor-pointer'
+            style={{
+              backgroundColor: "#eaaa43",
+              top: "-70%",
+              left: "calc(50% - 24px)"
+            }}
+          ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 const Clock = () => {
   const [time, setTime] = useState(new Date());
@@ -178,6 +367,32 @@ const Icon = (props) => {
       </svg>
 
     );
+    case "cl": return (
+      <svg
+        stroke="currentColor"
+        fill="currentColor"
+        strokeWidth={0}
+        viewBox="0 0 512 512"
+        width={props.width || "1em"}
+        height={props.height || "1em"}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M256 504C119 504 8 393 8 256S119 8 256 8s248 111 248 248-111 248-248 248zM142.1 273l135.5 135.5c9.4 9.4 24.6 9.4 33.9 0l17-17c9.4-9.4 9.4-24.6 0-33.9L226.9 256l101.6-101.6c9.4-9.4 9.4-24.6 0-33.9l-17-17c-9.4-9.4-24.6-9.4-33.9 0L142.1 239c-9.4 9.4-9.4 24.6 0 34z" />
+      </svg>
+    );
+    case "cr": return (
+      <svg
+        stroke="currentColor"
+        fill="currentColor"
+        strokeWidth={0}
+        viewBox="0 0 512 512"
+        width={props.width || "1em"}
+        height={props.height || "1em"}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M256 8c137 0 248 111 248 248S393 504 256 504 8 393 8 256 119 8 256 8zm113.9 231L234.4 103.5c-9.4-9.4-24.6-9.4-33.9 0l-17 17c-9.4 9.4-9.4 24.6 0 33.9L285.1 256 183.5 357.6c-9.4 9.4-9.4 24.6 0 33.9l17 17c9.4 9.4 24.6 9.4 33.9 0L369.9 273c9.4-9.4 9.4-24.6 0-34z" />
+      </svg>
+    )
 
     default: return null;
   }
